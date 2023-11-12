@@ -5,15 +5,26 @@ import {
   useRouter,
   usePathname
 } from 'next/navigation';
+import { useDebouncedCallback } from 'use-debounce';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+
+const countdown = 300;
 
 export default function Search({ placeholder }: { placeholder: string }) {
   const { replace } = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const handleSearch = (term: string) => {
+  const handleSearch = useDebouncedCallback((term: string) => {
+    console.log(`Search...${term}`);
+
     const params = new URLSearchParams(searchParams);
+
+    /**
+     * 検索した時は、初期値をpage=1としている。
+     * 検索した時に複数の条件一致があった時、page=1（先頭）から見ていくことにしたいため。
+     */
+    params.set('page', '1');
 
     if(term) {
       params.set('query', term);
@@ -29,7 +40,7 @@ export default function Search({ placeholder }: { placeholder: string }) {
 
     // update URL
     replace(`${pathname}?${params.toString()}`);
-  }
+  }, countdown)
 
   return (
     <div className="relative flex flex-1 flex-shrink-0">
