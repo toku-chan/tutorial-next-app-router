@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation';
 import Form from '@/app/ui/invoices/edit-form';
 import Breadcrumbs from '@/app/ui/invoices/breadcrumbs';
 import { fetchCustomers, fetchInvoiceById } from '@/app/lib/data';
@@ -24,9 +25,10 @@ export default async function Page({
   // console.log(invoice)
   // console.log(customers)
 
-  // undefinedの検証をしていないため、propsを渡すときに型違いでエラーが発生する
-  // 暫定的に検証し、undefinedだったら、nullを返すことにする
-  if(!invoice) return null;
+  // 存在しないinvoiceデータの場合は、404エラーとする
+  if(!invoice) {
+    notFound(); // not-found.tsxがないときはerror.tsxが表示される
+  };
 
   return (
     <main>

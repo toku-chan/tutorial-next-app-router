@@ -43,11 +43,17 @@ export async function createInvoice(formData: FormData) {
   // invoiceの作成日を作成する
   const date = new Date().toISOString().split('T')[0];
 
-  // SQLクエリを作成
-  await sql`
-    INSERT INTO invoices (customer_id, amount, status, date)
-    VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-  `;
+  try {
+    // SQLクエリを作成
+    await sql`
+      INSERT INTO invoices (customer_id, amount, status, date)
+      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+    `;
+  } catch (e) {
+    return {
+      message: 'Database Error: Failed to Create Invoice.'
+    }
+  }
 
   // SQLにデータを登録するので、キャッシュをクリアして、サーバーに新しくリクエストを実行する
   // createInvoiceが実行されると、該当のpathは再検証される
@@ -78,12 +84,18 @@ export async function updateInvoice(id: string, formData: FormData) {
   // セント単位で計算する
   const  amountInCents = amount * 100;
 
-  // 特定のテーブル(idから見つける)の更新を行う
-  await sql`
-    UPDATE invoices
-    SET customer_id = ${customerId}, amount = ${amount}, status = ${status}
-    WHERE id = ${id}
-  `;
+  try {
+    // 特定のテーブル(idから見つける)の更新を行う
+    await sql`
+      UPDATE invoices
+      SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+      WHERE id = ${id}
+    `;
+  } catch (e) {
+    return {
+      message: 'Database Error: Failed to Update Invoice.'
+    }
+  }
 
   // キャッシュクリアして、サーバーに新しくリクエストを作成
   revalidatePath('/dashboard/invoices');
@@ -94,10 +106,23 @@ export async function updateInvoice(id: string, formData: FormData) {
 
 // 削除ボタンを押下したときの、データベースの更新を行う
 export async function deleteInvoice (id: string) {
-  await sql`
-    DELETE FROM invoices
-    WHERE id = ${id}
-  `;
+  // 意図的にErrorを投げる
+  // throw new Error('Failed to Delete Invoice');
+
+  try {
+    await sql`
+      DELETE FROM invoices
+      WHERE id = ${id}
+    `;
+
+    return {
+      message: 'Delete Invoice'
+    }
+  } catch (e) {
+    return {
+      message: 'Database Error: Failed to Delete Invoice.'
+    }
+  }
 
   // キャッシュクリアして、サーバーに新しくリクエストを作成
   revalidatePath('/dashboard/invoices');
