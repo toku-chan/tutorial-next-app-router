@@ -49,8 +49,6 @@ export async function createInvoice(prevState: State, formData: FormData) {
     status: formData.get('status')
   });
 
-  console.log(validateFields)
-
   if(!validateFields.success) {
     return {
       errors: validateFields.error.flatten().fieldErrors,
@@ -70,7 +68,7 @@ export async function createInvoice(prevState: State, formData: FormData) {
     // SQLクエリを作成
     await sql`
       INSERT INTO invoices (customer_id, amount, status, date)
-      VALUES (${data.customerId}, ${amountInCents}, ${status}, ${date})
+      VALUES (${data.customerId}, ${amountInCents}, ${data.status}, ${date})
     `;
   } catch (e) {
     return {
@@ -93,25 +91,32 @@ const UpdateInvoice = InvoiceSchema.omit({
   date: true
 });
 
-export async function updateInvoice(id: string, formData: FormData) {
-  const {
-    customerId,
-    amount,
-    status
-  } = UpdateInvoice.parse({
+export async function updateInvoice(id: string, prevData: State, formData: FormData) {
+  const validateFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status')
   });
 
+  console.log(validateFields)
+
+  if(!validateFields.success) {
+    return {
+      errors: validateFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Update Invoice.'
+    }
+  }
+
+  const { data } = validateFields;
+
   // セント単位で計算する
-  const  amountInCents = amount * 100;
+  const  amountInCents = data.amount * 100;
 
   try {
     // 特定のテーブル(idから見つける)の更新を行う
     await sql`
       UPDATE invoices
-      SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+      SET customer_id = ${data.customerId}, amount = ${amountInCents}, status = ${data.status}
       WHERE id = ${id}
     `;
   } catch (e) {
