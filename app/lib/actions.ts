@@ -9,9 +9,15 @@ import { redirect } from "next/navigation";
 
 const InvoiceSchema = z.object({
   id: z.string(),
-  customerId: z.string(),
-  amount: z.coerce.number(),
-  status: z.enum(['pending', 'paid']),
+  customerId: z.string({
+    invalid_type_error: 'Please select a customer.'
+  }),
+  amount: z.coerce.number().gt(0, {
+    message: 'Please enter an amount greater than $0.'
+  }),
+  status: z.enum(['pending', 'paid'], {
+    invalid_type_error: 'Please select an invoice status.'
+  }),
   date: z.string()
 });
 
@@ -22,23 +28,40 @@ const CreateInvoice = InvoiceSchema.omit({
   date: true
 });
 
-export async function createInvoice(formData: FormData) {
+export type State = {
+  errors?: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+  };
+  message?: string | null;
+}
+
+// prevState は useFormStateで渡された状態を含む
+export async function createInvoice(prevState: State, formData: FormData) {
   // 多くのフォームデータを持つ場合は、submitで送られてきたデータを回して、自動でobjectを生成する以下の方法の方が良い。
   // const rawFormDataTest = Object.fromEntries(formData.entries())
   // console.log(rawFormDataTest);
 
-  const {
-    customerId,
-    amount,
-    status
-  } = CreateInvoice.parse({
+  const validateFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status')
   });
 
+  console.log(validateFields)
+
+  if(!validateFields.success) {
+    return {
+      errors: validateFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Create Invoice.'
+    }
+  }
+
+  const { data } = validateFields;
+
   // セント単位で計算する
-  const  amountInCents = amount * 100;
+  const  amountInCents = data.amount * 100;
 
   // invoiceの作成日を作成する
   const date = new Date().toISOString().split('T')[0];
@@ -47,7 +70,7 @@ export async function createInvoice(formData: FormData) {
     // SQLクエリを作成
     await sql`
       INSERT INTO invoices (customer_id, amount, status, date)
-      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+      VALUES (${data.customerId}, ${amountInCents}, ${status}, ${date})
     `;
   } catch (e) {
     return {
